@@ -1,0 +1,12 @@
+[submodule "deps/polyscope"]
+	path = deps/polyscope
+	url = https://github.com/DavidXu-JJ/polyscope.git
+	branch = tags/CAD-MLLM
+[submodule "deps/geometry-central"]
+	path = deps/geometry-central
+	url = https://github.com/DavidXu-JJ/geometry-central.git
+	branch = tags/CAD-MLLM
+[submodule "deps/CGAL"]
+	path = deps/CGAL
+	url = https://github.com/DavidXu-JJ/CGAL.git
+	branch = tags/CAD-MLLM
