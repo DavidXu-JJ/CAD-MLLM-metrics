@@ -1,12 +1,4 @@
-Mkdir ./deps
-cd ./deps
-git clone https://github.com/DavidXu-JJ/geometry-central.git
-git clone https://github.com/DavidXu-JJ/polyscope.git
-git clone https://github.com/DavidXu-JJ/cgal.git
-cd ./cgal
-git checkout tags/CAD-MLLM
-cd ../..
-
+git submodule update --init --recursive
 
 BOOST_DIR=./deps/boost_1_82_0
 BOOST_ARCHIVE=./archive/boost_1_82_0.tar.bz2
