@@ -34,17 +34,30 @@ sh eval.sh /path/to/your/folder
 
 (Note: transform `.ply` into `.stl` is essential to load as a manifold.)
 
-The results for each metric will be saved in newly created folders seperately. I personally suggest to first use some toy cases for your testing.
+The results for each metric will be saved in separate folders. I suggest first using some toy cases for your testing.
 
 ## Result collect
 
 Example:
+
+Under the `toy_case` directory, ensure that the mesh file in the `recon` folder uses the same filename prefix as the corresponding ground-truth mesh in the `gt` folder (Used to compute the ground-truth mesh's segment number).
+
+```
+├── gt
+│   └── mesh1.ply
+└── recon
+    └── mesh1.ply
+```
+
+Run computation:
 
 ```
 sh eval.sh ./toy_case/recon
 sh eval.sh ./toy_case/gt
 python3 scripts/merge_results.py toy_case
 ```
+
+There would be a `result.json` generated under `toy_case`.
 
 ## Bibtex
 
