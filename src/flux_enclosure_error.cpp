@@ -7,21 +7,18 @@
 #include "thread"
 #include "unordered_map"
 
-#include "geometrycentral/surface/manifold_surface_mesh.h"
-#include "geometrycentral/surface/meshio.h"
-#include "geometrycentral/surface/vertex_position_geometry.h"
+#include "CGAL/Exact_predicates_inexact_constructions_kernel.h"
+#include "CGAL/Polygon_mesh_processing/IO/polygon_mesh_io.h"
+#include "CGAL/Surface_mesh.h"
 
-#include "geometrycentral/surface/direction_fields.h"
-
-#include "polyscope/polyscope.h"
-#include "polyscope/surface_mesh.h"
+#include "CGAL/Real_timer.h"
+#include "CGAL/tags.h"
 
 #include "args/args.hxx"
-#include "imgui.h"
-#include <memory>
 
-using namespace geometrycentral;
-using namespace geometrycentral::surface;
+typedef CGAL::Exact_predicates_inexact_constructions_kernel K;
+typedef CGAL::Surface_mesh<K::Point_3> Mesh;
+namespace PMP = CGAL::Polygon_mesh_processing;
 
 std::string get_parent_path(const std::string& filepath) {
     size_t found = filepath.find_last_of("/\\");
@@ -77,6 +74,10 @@ std::vector<std::string> list_directory(const std::string &dirPath) {
   return filenames;
 }
 
+K::Vector_3 normalize(const K::Vector_3& v) {
+    float len = std::sqrt(v.squared_length());
+    return v / len;
+}
 
 // Written by Jingwei Xu for https://arxiv.org/abs/2411.04954
 void computeFluxEnclosure(std::vector<std::string> &stlFiles, size_t start,
@@ -85,65 +86,38 @@ void computeFluxEnclosure(std::vector<std::string> &stlFiles, size_t start,
   for (size_t iter = start; iter < end; ++iter) {
     std::string inputFilename = stlFiles[iter];
 
-    // == Geometry-central data
-    std::unique_ptr<ManifoldSurfaceMesh> manifold_mesh;
-    std::unique_ptr<SurfaceMesh> surface_mesh;
-    std::unique_ptr<VertexPositionGeometry> geometry;
-    bool use_manifold = true;
-
-    // Load mesh
-    try {
-      std::tie(manifold_mesh, geometry) = readManifoldSurfaceMesh(inputFilename);
-    } catch (const std::runtime_error &e) {
-      std::cerr << "Error: " << e.what() << std::endl;
-      std::cout << "Manifold sanity check failed for .stl, try loading .ply"
-                << std::endl;
-      use_manifold = false;
+    Mesh cmesh;
+    if (!PMP::IO::read_polygon_mesh(inputFilename, cmesh) ||
+        !CGAL::is_triangle_mesh(cmesh)) {
+      std::cerr << "Can't open stl file. Try ply file instead." << std::endl;
       replaceSubstring(inputFilename, ".stl", ".ply");
-      try {
-          std::tie(surface_mesh, geometry) = readSurfaceMesh(inputFilename);
-      } catch (const std::runtime_error &err) {
-          std::cerr << "Error: " << e.what() << std::endl;
-          std::cout << "Failed loading mesh." << std::endl;
-          return;
+      if (!PMP::IO::read_polygon_mesh(inputFilename, cmesh) ||
+          !CGAL::is_triangle_mesh(cmesh)) {
+        std::cerr << "Invalid data." << std::endl;
+      } else {
+        return;
       }
     }
 
     try {
-        std::unique_ptr<geometrycentral::surface::SurfaceMesh> mesh;
-        if (use_manifold) {
-            mesh = std::move(manifold_mesh);
-        } else {
-            mesh = std::move(surface_mesh);
-        }
-        size_t nVert = mesh->nVertices();
-        std::unordered_map<size_t, std::vector<size_t>> vertexGraph;
-        const std::vector<std::vector<size_t>> &faceIndices =
-            mesh->getFaceVertexList();
-
-        Vector3 normal_integral = Vector3::zero();
         double flux = 0.0f;
-        for (std::vector<size_t> face : faceIndices) {
-
-            size_t faceDegree = face.size();
-            if (faceDegree != 3) {
-                std::cerr << "Warning: Ignore faces with more or less vertices than 3." << std::endl;
-                continue;
-            }
-
-            size_t vertex_A = face[0];
-            size_t vertex_B = face[1];
-            size_t vertex_C = face[2];
-            Vector3 posA = geometry->inputVertexPositions[vertex_A];
-            Vector3 posB = geometry->inputVertexPositions[vertex_B];
-            Vector3 posC = geometry->inputVertexPositions[vertex_C];
-            Vector3 normal = cross(posB - posA, posC - posA).normalize();
-
-            float surface_area = cross((posB - posA), (posC - posA)).norm() / 2.0f;
-            normal_integral += surface_area * normal;
-            flux += dot(normal, Vector3::constant(1.0f)) * surface_area;
+        for (Mesh::Face_index f : cmesh.faces()) {
+          if (cmesh.degree(f) != 3) {
+            std::cerr << "Not a triangle mesh" << std::endl;
+            return;
+          }
+          Mesh::Halfedge_index hf = cmesh.halfedge(f);
+          std::vector<K::Point_3> face_points;
+          for (Mesh::Halfedge_index h : halfedges_around_face(hf, cmesh)) {
+            face_points.push_back(cmesh.point(cmesh.target(h)));
+          }
+          K::Vector_3 v1 = face_points[1] - face_points[0];
+          K::Vector_3 v2 = face_points[2] - face_points[0];
+          K::Vector_3 cross = CGAL::cross_product(v1, v2);
+          float surface_area = std::sqrt(cross.squared_length()) / 2.0f;
+          K::Vector_3 normal = normalize(cross);
+          flux += surface_area * CGAL::scalar_product(normal, K::Vector_3(1., 1., 1.));
         }
-
 
         // Create output directory path and filename
         std::string inputPath = inputFilename;

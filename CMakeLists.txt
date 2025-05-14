@@ -109,5 +109,5 @@ target_include_directories(
   self_intersection PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/deps/polyscope/deps/args")
 target_link_libraries(mesh_segment geometry-central polyscope)
 target_link_libraries(dangling_edge geometry-central polyscope)
-target_link_libraries(flux_enclosure_error geometry-central polyscope)
+target_link_libraries(flux_enclosure_error CGAL::CGAL)
 target_link_libraries(self_intersection CGAL::CGAL)
