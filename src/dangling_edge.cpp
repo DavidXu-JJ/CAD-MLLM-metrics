@@ -201,33 +201,6 @@ void computeDanglingEdge(std::vector<std::string> &stlFiles, size_t start,
                 << " for writing." << std::endl;
         }
 
-        std::string outputEdgeDir = get_parent_path(inputPath) + "_dangling_edge_describe";
-        std::string outputEdgeFilename =
-                outputEdgeDir + "/" + replace_extension(get_filename(inputPath), ".txt");
-
-        // Create output directory if it doesn't exist
-        create_directories(outputEdgeDir);
-        std::ofstream outEdgeFile(outputEdgeFilename);
-        if (outEdgeFile.is_open()) {
-            outEdgeFile << nodes.size() << std::endl;
-            for (size_t nodeIter = 0; nodeIter < nodes.size(); ++nodeIter) {
-                outEdgeFile
-                << nodes[nodeIter][0] << ' '
-                << nodes[nodeIter][1] << ' '
-                << nodes[nodeIter][2] << std::endl;
-            }
-
-            outEdgeFile << edges.size() << std::endl;
-            for (size_t edgeIter = 0; edgeIter < edges.size(); ++edgeIter) {
-                outEdgeFile << edges[edgeIter][0] << ' ' << edges[edgeIter][1] << std::endl;
-            }
-            outEdgeFile.close();
-            std::cout << "Dangling Edge Description saved to: " << outputEdgeFilename
-                      << std::endl;
-        } else {
-            std::cerr << "Error: Could not open file " << outputEdgeFilename
-                      << " for writing." << std::endl;
-        }
     }  catch (const std::runtime_error &err) {
         std::cerr << "Error: " << err.what() << std::endl;
         std::cout << "Failed computing." << std::endl;
