@@ -65,6 +65,8 @@ We appreciate the following projects for their awesome foundation code used in t
 
 ## Bibtex
 
+Please kindly consider citing this paper if you find these metrics helpful:
+
 ```
 @misc{xu2024CADMLLM,
       title={CAD-MLLM: Unifying Multimodality-Conditioned CAD Generation With MLLM}, 
