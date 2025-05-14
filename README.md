@@ -59,7 +59,7 @@ python3 scripts/merge_results.py toy_case
 
 There would be a `result.json` generated under `toy_case`.
 
-## Acknowledgement
+## Acknowledgements
 
 We appreciate the following projects for their awesome foundation code used in this repo: [geometry-central](https://github.com/nmwsharp/geometry-central), [polyscope](https://github.com/nmwsharp/polyscope), [CGAL](https://github.com/CGAL/cgal).
 
