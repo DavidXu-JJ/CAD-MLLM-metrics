@@ -38,9 +38,13 @@ The results for each metric will be saved in newly created folders seperately. I
 
 ## Result collect
 
-Finally you need to collect the results from new created folder. You may need to write a script for this purpose.
+Example:
 
-(Since the file structure may different in your experimental environment, I prepare some tool functions in example.py for your convenience.)
+```
+sh eval.sh ./toy_case/recon
+sh eval.sh ./toy_case/gt
+python3 scripts/merge_results.py toy_case
+```
 
 ## Bibtex
 
