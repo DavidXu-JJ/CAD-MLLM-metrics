@@ -32,6 +32,8 @@ Then run:
 sh eval.sh /path/to/your/folder
 ```
 
+(Note: transform `.ply` into `.stl` is essential to load as a manifold.)
+
 The results for each metric will be saved in newly created folders seperately. I personally suggest to first use some toy cases for your testing.
 
 ## Result collect
