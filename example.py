@@ -14,7 +14,7 @@ def collect_segment_num_error(paths):
 
     return abs(int(seg) - int(gt_seg))
 
-def collect_danling_edge_length_per_volume(paths):
+def collect_danling_edge_length(paths):
     dangling_edge_path = paths
 
     dangling_edge_length = None
