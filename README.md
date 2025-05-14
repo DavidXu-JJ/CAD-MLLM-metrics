@@ -39,3 +39,16 @@ The results for each metric will be saved in newly created folders seperately. I
 Finally you need to collect the results from new created folder. You may need to write a script for this purpose.
 
 (Since the file structure may different in your experimental environment, I prepare some tool functions in example.py for your convenience.)
+
+## Bibtex
+
+```
+@misc{xu2024CADMLLM,
+      title={CAD-MLLM: Unifying Multimodality-Conditioned CAD Generation With MLLM}, 
+      author={Jingwei Xu and Zibo Zhao and Chenyu Wang and Wen Liu and Yi Ma and Shenghua Gao},
+      year={2024},
+      eprint={2411.04954},
+      archivePrefix={arXiv},
+      primaryClass={cs.CV}
+}
+```
