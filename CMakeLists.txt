@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.10.0)
 
-project(gc_polyscope_example)
+# Template taken from https://github.com/nmwsharp/gc-polyscope-project-template
+project(cad_mllm_metrics)
 
 # Configure output locations
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
