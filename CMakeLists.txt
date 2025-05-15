@@ -77,7 +77,6 @@ else()
 endif()
 
 # == Deps
-add_subdirectory(deps/geometry-central)
 add_subdirectory(deps/polyscope)
 add_subdirectory(deps/cgal)
 find_package(CGAL REQUIRED)
