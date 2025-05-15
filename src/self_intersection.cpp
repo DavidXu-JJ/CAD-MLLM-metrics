@@ -84,6 +84,7 @@ std::vector<std::string> list_directory(const std::string &dirPath) {
   return filenames;
 }
 
+// Written by Jingwei Xu for https://arxiv.org/abs/2411.04954
 void computeSelfIntersection(std::vector<std::string> &stlFiles, size_t start,
                              size_t end) {
 
@@ -166,11 +167,10 @@ void computeSelfIntersection(std::vector<std::string> &stlFiles, size_t start,
   }
 }
 
-// Written by Jingwei Xu for https://arxiv.org/abs/2411.04954
 int main(int argc, char **argv) {
 
   // Configure the argument parser
-  args::ArgumentParser parser("geometry-central & Polyscope example project");
+  args::ArgumentParser parser("Self Intersection");
   args::Positional<std::string> inputDirname(parser, "mesh_dir",
                                              "Directory contains mesh files.");
 

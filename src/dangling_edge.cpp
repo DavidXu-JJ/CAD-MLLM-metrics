@@ -7,20 +7,18 @@
 #include "unistd.h"
 #include "unordered_map"
 
-#include "geometrycentral/surface/manifold_surface_mesh.h"
-#include "geometrycentral/surface/meshio.h"
-#include "geometrycentral/surface/vertex_position_geometry.h"
+#include "CGAL/Exact_predicates_inexact_constructions_kernel.h"
+#include "CGAL/Polygon_mesh_processing/IO/polygon_mesh_io.h"
+#include "CGAL/Surface_mesh.h"
 
-#include "geometrycentral/surface/direction_fields.h"
-
-#include "polyscope/polyscope.h"
-#include "polyscope/surface_mesh.h"
+#include "CGAL/Real_timer.h"
+#include "CGAL/tags.h"
 
 #include "args/args.hxx"
-#include "imgui.h"
 
-using namespace geometrycentral;
-using namespace geometrycentral::surface;
+typedef CGAL::Exact_predicates_inexact_constructions_kernel K;
+typedef CGAL::Surface_mesh<K::Point_3> Mesh;
+namespace PMP = CGAL::Polygon_mesh_processing;
 
 std::string get_parent_path(const std::string &filepath) {
   size_t found = filepath.find_last_of("/\\");
@@ -86,53 +84,38 @@ void computeDanglingEdge(std::vector<std::string> &stlFiles, size_t start,
   for (size_t iter = start; iter < end; ++iter) {
     std::string inputFilename = stlFiles[iter];
 
-    // == Geometry-central data
-    std::unique_ptr<ManifoldSurfaceMesh> manifold_mesh;
-    std::unique_ptr<SurfaceMesh> surface_mesh;
-    std::unique_ptr<VertexPositionGeometry> geometry;
-    bool use_manifold = true;
-    // Load mesh
-    try {
-      std::tie(manifold_mesh, geometry) = readManifoldSurfaceMesh(inputFilename);
-    } catch (const std::runtime_error &e) {
-      std::cerr << "Error: " << e.what() << std::endl;
-      std::cout << "Manifold sanity check failed for .stl, try loading .ply"
-                << std::endl;
-      use_manifold = false;
+    Mesh cmesh;
+    if (!PMP::IO::read_polygon_mesh(inputFilename, cmesh) ||
+        !CGAL::is_triangle_mesh(cmesh)) {
+      std::cerr << "Can't open stl file. Try ply file instead." << std::endl;
       replaceSubstring(inputFilename, ".stl", ".ply");
-      try {
-          std::tie(surface_mesh, geometry) = readSurfaceMesh(inputFilename);
-      } catch (const std::runtime_error &err) {
-          std::cerr << "Error: " << e.what() << std::endl;
-          std::cout << "Failed loading mesh." << std::endl;
-          return;
+      if (!PMP::IO::read_polygon_mesh(inputFilename, cmesh) ||
+          !CGAL::is_triangle_mesh(cmesh)) {
+        std::cerr << "Invalid data." << std::endl;
+      } else {
+        return;
       }
     }
 
     try {
-        std::unique_ptr<geometrycentral::surface::SurfaceMesh> mesh;
-        if (use_manifold) {
-            mesh = std::move(manifold_mesh);
-        } else {
-            mesh = std::move(surface_mesh);
-        }
-        std::unordered_map<long long, int> edge_weight;
-        for (Halfedge e : mesh->interiorHalfedges()) {
-            // do science here
-            size_t firstVert = e.edge().firstVertex().getIndex();
-            size_t secondVert = e.edge().secondVertex().getIndex();
-            long long lowerVert =
-                static_cast<long long>(std::min(firstVert, secondVert));
-            long long higherVert =
-                static_cast<long long>(std::max(firstVert, secondVert));
-            edge_weight[(lowerVert * (1ll << 31)) + higherVert] += 1;
+        std::unordered_map<size_t, size_t> edge_weight;
+        for (Mesh::Halfedge_index h : cmesh.halfedges()) {
+            if (cmesh.is_border(h)) {
+                // Skip the exterior halfedge, only count the weight of the edge for the interior halfedge
+                continue;
+            }
+            size_t firstVert = cmesh.source(h);
+            size_t secondVert = cmesh.target(h);
+            long long lowerVert = static_cast<long long>(std::min(firstVert, secondVert));
+            long long higherVert = static_cast<long long>(std::max(firstVert, secondVert));
+            edge_weight[lowerVert * (1ll << 31) + higherVert] += 1;
         }
 
-        size_t vertNum = mesh->nVertices();
-        Vector3 max_point{-1e-9, -1e-9, -1e-9};
-        Vector3 min_point{1e-9, 1e-9, 1e-9};
-        for (size_t i = 0; i < vertNum; ++i) {
-            Vector3 current_point = geometry->inputVertexPositions[i];
+        // Get the scale in case of the scale is not aligned
+        std::vector<double> max_point(3, -1e9);
+        std::vector<double> min_point(3, 1e9);
+        for (Mesh::Vertex_index v : cmesh.vertices()) {
+            K::Point_3 current_point = cmesh.point(v);
             for (int dim = 0; dim < 3; ++dim) {
                 max_point[dim] = std::max(max_point[dim], current_point[dim]);
                 min_point[dim] = std::min(min_point[dim], current_point[dim]);
@@ -143,7 +126,6 @@ void computeDanglingEdge(std::vector<std::string> &stlFiles, size_t start,
             scale = std::max(scale, max_point[dim] - min_point[dim]);
         }
         scale /= 2.0f;
-        std::cout << scale << std::endl;
         if (scale < 0.f) {
             std::cerr << "Error: normalized scale less than 0." << std::endl;
             return;
@@ -151,7 +133,6 @@ void computeDanglingEdge(std::vector<std::string> &stlFiles, size_t start,
 
         double danglingEdgeLength = 0.0f;
         std::unordered_map<size_t, size_t> index_map;
-        std::vector<glm::vec3> nodes;
         std::vector<std::array<size_t, 2>> edges;
         size_t count = 0;
         for (const auto &pair : edge_weight) {
@@ -160,20 +141,18 @@ void computeDanglingEdge(std::vector<std::string> &stlFiles, size_t start,
                     static_cast<size_t>(pair.first & ((1ll << 31) - 1ll));
                 size_t secondVertIndex = static_cast<size_t>((pair.first >> 31));
 
-                Vector3 vert1 = geometry->inputVertexPositions[firstVertIndex];
-                Vector3 vert2 = geometry->inputVertexPositions[secondVertIndex];
-                double edgeLength = norm(vert1 - vert2);
+                K::Point_3 vert1 = cmesh.point(Mesh::Vertex_index(firstVertIndex));
+                K::Point_3 vert2 = cmesh.point(Mesh::Vertex_index(secondVertIndex));
+                double edgeLength = std::sqrt((vert1 - vert2).squared_length());
                 danglingEdgeLength += edgeLength;
 
                 if (!index_map.count(firstVertIndex)) {
                     index_map[firstVertIndex] = count;
                     count += 1;
-                    nodes.emplace_back(glm::vec3(vert1.x, vert1.y, vert1.z));
                 }
                 if (!index_map.count(secondVertIndex)) {
                     index_map[secondVertIndex] = count;
                     count += 1;
-                    nodes.emplace_back(glm::vec3(vert2.x, vert2.y, vert2.z));
                 }
                 std::array<size_t, 2> edge {index_map[firstVertIndex], index_map[secondVertIndex]};
                 edges.emplace_back(edge);
@@ -212,7 +191,7 @@ void computeDanglingEdge(std::vector<std::string> &stlFiles, size_t start,
 int main(int argc, char **argv) {
 
   // Configure the argument parser
-  args::ArgumentParser parser("geometry-central & Polyscope example project");
+  args::ArgumentParser parser("Dangling Edge Length");
   args::Positional<std::string> inputDirname(parser, "mesh_dir",
                                              "Directory contains mesh files.");
 

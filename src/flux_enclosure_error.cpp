@@ -148,7 +148,7 @@ void computeFluxEnclosure(std::vector<std::string> &stlFiles, size_t start,
 int main(int argc, char **argv) {
 
   // Configure the argument parser
-  args::ArgumentParser parser("geometry-central & Polyscope example project");
+  args::ArgumentParser parser("Flux Enclosure Error");
   args::Positional<std::string> inputDirname(parser, "mesh_dir",
                                              "Directory contains mesh files.");
 

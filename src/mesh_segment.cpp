@@ -7,21 +7,18 @@
 #include "thread"
 #include "unordered_map"
 
-#include "geometrycentral/surface/manifold_surface_mesh.h"
-#include "geometrycentral/surface/meshio.h"
-#include "geometrycentral/surface/vertex_position_geometry.h"
+#include "CGAL/Exact_predicates_inexact_constructions_kernel.h"
+#include "CGAL/Polygon_mesh_processing/IO/polygon_mesh_io.h"
+#include "CGAL/Surface_mesh.h"
 
-#include "geometrycentral/surface/direction_fields.h"
-
-#include "polyscope/polyscope.h"
-#include "polyscope/surface_mesh.h"
+#include "CGAL/Real_timer.h"
+#include "CGAL/tags.h"
 
 #include "args/args.hxx"
-#include "imgui.h"
-#include <memory>
 
-using namespace geometrycentral;
-using namespace geometrycentral::surface;
+typedef CGAL::Exact_predicates_inexact_constructions_kernel K;
+typedef CGAL::Surface_mesh<K::Point_3> Mesh;
+namespace PMP = CGAL::Polygon_mesh_processing;
 
 std::string get_parent_path(const std::string& filepath) {
     size_t found = filepath.find_last_of("/\\");
@@ -77,64 +74,46 @@ std::vector<std::string> list_directory(const std::string &dirPath) {
   return filenames;
 }
 
+// Written by Jingwei Xu for https://arxiv.org/abs/2411.04954
 void computeMeshSegment(std::vector<std::string> &stlFiles, size_t start,
                         size_t end) {
 
   for (size_t iter = start; iter < end; ++iter) {
     std::string inputFilename = stlFiles[iter];
 
-    // == Geometry-central data
-    std::unique_ptr<ManifoldSurfaceMesh> manifold_mesh;
-    std::unique_ptr<SurfaceMesh> surface_mesh;
-    std::unique_ptr<VertexPositionGeometry> geometry;
-    bool use_manifold = true;
-
-    // Load mesh
-    try {
-      std::tie(manifold_mesh, geometry) = readManifoldSurfaceMesh(inputFilename);
-    } catch (const std::runtime_error &e) {
-      std::cerr << inputFilename << "throws Error: " << e.what() << std::endl;
-      std::cout << "Manifold sanity check failed for .stl, try loading .ply"
-                << std::endl;
-      use_manifold = false;
+    Mesh cmesh;
+    if (!PMP::IO::read_polygon_mesh(inputFilename, cmesh) ||
+        !CGAL::is_triangle_mesh(cmesh)) {
+      std::cerr << "Can't open stl file. Try ply file instead." << std::endl;
       replaceSubstring(inputFilename, ".stl", ".ply");
-      try {
-          std::tie(surface_mesh, geometry) = readSurfaceMesh(inputFilename);
-      } catch (const std::runtime_error &err) {
-          std::cerr << inputFilename << "throws Error: " << e.what() << std::endl;
-          std::cout << "Failed loading mesh." << std::endl;
-          return;
+      if (!PMP::IO::read_polygon_mesh(inputFilename, cmesh) ||
+          !CGAL::is_triangle_mesh(cmesh)) {
+        std::cerr << "Invalid data." << std::endl;
+      } else {
+        return;
       }
     }
 
     try {
-        std::unique_ptr<geometrycentral::surface::SurfaceMesh> mesh;
-        if (use_manifold) {
-            mesh = std::move(manifold_mesh);
-        } else {
-            mesh = std::move(surface_mesh);
-        }
-        size_t nVert = mesh->nVertices();
         std::unordered_map<size_t, std::vector<size_t>> vertexGraph;
-        const std::vector<std::vector<size_t>> &faceIndices =
-            mesh->getFaceVertexList();
-
-        for (std::vector<size_t> face : faceIndices) {
-
-            size_t faceDegree = face.size();
-
-            for (size_t i = 0; i < faceDegree; i++) {
-
-                size_t vertex_A = face[i];
-                size_t vertex_B = face[(i + 1) % faceDegree];
-
-                vertexGraph[vertex_A].push_back(vertex_B);
+        for (Mesh::Face_index f : cmesh.faces()) {
+            std::vector<size_t> involved_vertices_indices;
+           
+            Mesh::Halfedge_index hf = cmesh.halfedge(f);
+            for (Mesh::Halfedge_index h : halfedges_around_face(hf, cmesh)) {
+              involved_vertices_indices.push_back(cmesh.target(h).idx());
+            }
+            for (size_t i = 0; i < involved_vertices_indices.size(); i++) {
+                for (size_t j = i + 1; j < involved_vertices_indices.size(); j++) {
+                    vertexGraph[involved_vertices_indices[i]].push_back(involved_vertices_indices[j]);
+                    vertexGraph[involved_vertices_indices[j]].push_back(involved_vertices_indices[i]);
+                }
             }
         }
 
         int set_number = 0;
         std::unordered_map<size_t, bool> isPerm;
-        for (size_t iV = 0; iV < nVert; ++iV) {
+        for (size_t iV = 0; iV < cmesh.number_of_vertices(); ++iV) {
             if (!isPerm.count(iV)) {
                 set_number += 1;
                 std::queue<size_t> vBFS;
@@ -151,7 +130,7 @@ void computeMeshSegment(std::vector<std::string> &stlFiles, size_t start,
                 }
             }
         }
-
+        
         // Create output directory path and filename
         std::string inputPath = inputFilename;
         std::string outputDir = get_parent_path(inputPath) + "_segment_num";
@@ -178,11 +157,10 @@ void computeMeshSegment(std::vector<std::string> &stlFiles, size_t start,
   }
 }
 
-// Written by Jingwei Xu for https://arxiv.org/abs/2411.04954
 int main(int argc, char **argv) {
 
   // Configure the argument parser
-  args::ArgumentParser parser("geometry-central & Polyscope example project");
+  args::ArgumentParser parser("Mesh Segmentation");
   args::Positional<std::string> inputDirname(parser, "mesh_dir",
                                              "Directory contains mesh files.");
 
