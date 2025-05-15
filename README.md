@@ -61,7 +61,7 @@ There would be a `result.json` generated under `toy_case`.
 
 ## Acknowledgements
 
-We appreciate the following projects for their awesome foundation code used in this repo: [geometry-central](https://github.com/nmwsharp/geometry-central), [polyscope](https://github.com/nmwsharp/polyscope), [CGAL](https://github.com/CGAL/cgal).
+We appreciate the following projects for their awesome foundation code used in this repo: [CGAL](https://github.com/CGAL/cgal), [polyscope](https://github.com/nmwsharp/polyscope).
 
 ## Bibtex
 
