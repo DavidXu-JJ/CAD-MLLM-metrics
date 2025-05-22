@@ -34,9 +34,7 @@ sh eval.sh /path/to/your/folder
 
 The results for each metric will be saved in separate folders. I suggest first using some toy cases for your testing.
 
-## Result collect
-
-Example:
+## Toy Case Example Guidance
 
 Under the `toy_case` directory, ensure that the mesh file in the `recon` folder uses the same filename prefix as the corresponding ground-truth mesh in the `gt` folder (Used to compute the ground-truth mesh's segment number).
 
