@@ -10,11 +10,31 @@ It contains the utility code to compute the proposed new metrics **Segment Error
   <em>Example: blue lines denote dangling edges bounded by only one face. Our metric <b>DangEL</b> counts the sum of their lengths.</em>
 </p>
 
+## Dependency
+
+If you build under Linux (e.g., Ubuntu), you may try to install the following dependencies:
+
+```
+apt-get update
+apt-get install -y --no-install-recommends \
+  ca-certificates \
+  git \
+  build-essential \
+  cmake \
+  wget \
+  tar \
+  bzip2 \
+  libgmp-dev \
+  libmpfr-dev \
+  python3 \
+  python3-numpy \
+  python3-tqdm
+```
 
 ## Build
 
 ```
-sh build.sh
+bash build.sh
 ```
 
 ## Before you compute
@@ -25,7 +45,8 @@ sh build.sh
 
 ## Compute the metrics for each model
 
-Place all your `.ply` files into one folder, like:
+Place all your `.ply` or `.stl` files into one folder. PLY files are read
+directly and do not need to be converted to STL first. For example:
 
 ```
 └── folder
@@ -36,7 +57,7 @@ Place all your `.ply` files into one folder, like:
 Then run:
 
 ```
-sh eval.sh /path/to/your/folder
+bash eval.sh /path/to/your/folder
 ```
 
 The results for each metric will be saved in separate folders. I suggest first using some toy cases for your testing.
@@ -55,8 +76,8 @@ Under the `toy_case` directory, ensure that the mesh file in the `recon` folder 
 Run computation:
 
 ```
-sh eval.sh ./toy_case/recon
-sh eval.sh ./toy_case/gt
+bash eval.sh ./toy_case/recon
+bash eval.sh ./toy_case/gt
 python3 scripts/merge_results.py toy_case
 ```
 
@@ -64,7 +85,7 @@ There would be a `result.json` generated under `toy_case`.
 
 ## Acknowledgements
 
-We appreciate the following projects for their awesome foundation code used in this repo: [CGAL](https://github.com/CGAL/cgal), [polyscope](https://github.com/nmwsharp/polyscope).
+We appreciate [CGAL](https://github.com/CGAL/cgal) for the geometry algorithms used in this repo.
 
 ## Bibtex
 

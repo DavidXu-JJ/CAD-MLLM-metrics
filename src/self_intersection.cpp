@@ -1,11 +1,17 @@
 #include "dirent.h"
+#include <algorithm>
+#include <cctype>
+#include <cstdlib>
 #include "fstream"
+#include <iostream>
 #include "queue"
 #include "set"
+#include <string>
 #include "sys/stat.h"
 #include "sys/types.h"
 #include "thread"
 #include "unistd.h"
+#include <vector>
 
 #include "CGAL/Exact_predicates_inexact_constructions_kernel.h"
 #include "CGAL/Polygon_mesh_processing/IO/polygon_mesh_io.h"
@@ -14,8 +20,6 @@
 
 #include "CGAL/Real_timer.h"
 #include "CGAL/tags.h"
-
-#include "args/args.hxx"
 
 typedef CGAL::Exact_predicates_inexact_constructions_kernel K;
 typedef CGAL::Surface_mesh<K::Point_3> Mesh;
@@ -51,16 +55,14 @@ bool fileExists(const std::string& filename) {
     return file.good();
 }
 
-bool isStlFile(const std::string &filename) {
-  return filename.rfind(".stl") == (filename.size() - 4);
-}
-
-void replaceSubstring(std::string &str, const std::string &from,
-                      const std::string &to) {
-  size_t startPos = str.find(from);
-  if (startPos != std::string::npos) {
-    str.replace(startPos, from.length(), to);
+bool isMeshFile(const std::string &filename) {
+  if (filename.size() < 4) {
+    return false;
   }
+  std::string extension = filename.substr(filename.size() - 4);
+  std::transform(extension.begin(), extension.end(), extension.begin(),
+                 [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+  return extension == ".ply" || extension == ".stl";
 }
 
 std::vector<std::string> list_directory(const std::string &dirPath) {
@@ -85,11 +87,11 @@ std::vector<std::string> list_directory(const std::string &dirPath) {
 }
 
 // Written by Jingwei Xu for https://arxiv.org/abs/2411.04954
-void computeSelfIntersection(std::vector<std::string> &stlFiles, size_t start,
+void computeSelfIntersection(std::vector<std::string> &meshFiles, size_t start,
                              size_t end) {
 
   for (size_t iter = start; iter < end; ++iter) {
-    std::string inputFilename = stlFiles[iter];
+    std::string inputFilename = meshFiles[iter];
     // Create output directory path and filename
     std::string inputPath = inputFilename;
     std::string outputDir = get_parent_path(inputPath) + "_self_intersection";
@@ -101,16 +103,13 @@ void computeSelfIntersection(std::vector<std::string> &stlFiles, size_t start,
     }
 
     Mesh cmesh;
-    if (!PMP::IO::read_polygon_mesh(inputFilename, cmesh) ||
-        !CGAL::is_triangle_mesh(cmesh)) {
-      std::cerr << "Can't open stl file. Try ply file instead." << std::endl;
-      replaceSubstring(inputFilename, ".stl", ".ply");
-      if (!PMP::IO::read_polygon_mesh(inputFilename, cmesh) ||
-          !CGAL::is_triangle_mesh(cmesh)) {
-        std::cerr << "Invalid data." << std::endl;
-      } else {
-        return;
-      }
+    if (!PMP::IO::read_polygon_mesh(inputFilename, cmesh)) {
+      std::cerr << "Can't read mesh file: " << inputFilename << std::endl;
+      continue;
+    }
+    if (!CGAL::is_triangle_mesh(cmesh)) {
+      std::cerr << "Mesh is not triangular: " << inputFilename << std::endl;
+      continue;
     }
 
     try {
@@ -168,50 +167,31 @@ void computeSelfIntersection(std::vector<std::string> &stlFiles, size_t start,
 }
 
 int main(int argc, char **argv) {
-
-  // Configure the argument parser
-  args::ArgumentParser parser("Self Intersection");
-  args::Positional<std::string> inputDirname(parser, "mesh_dir",
-                                             "Directory contains mesh files.");
-
-  // Parse args
-  try {
-    parser.ParseCLI(argc, argv);
-  } catch (args::Help &h) {
-    std::cout << parser;
-    return 0;
-  } catch (args::ParseError &e) {
-    std::cerr << e.what() << std::endl;
-    std::cerr << parser;
-    return 1;
-  }
-
-  // Make sure a mesh name was given
-  if (!inputDirname) {
-    std::cerr << "Please specify a mesh file as argument" << std::endl;
+  if (argc != 2) {
+    std::cerr << "Usage: " << argv[0] << " <mesh_dir>" << std::endl;
     return EXIT_FAILURE;
   }
 
-  std::string dirPath = args::get(inputDirname);
+  std::string dirPath = argv[1];
 
   std::vector<std::string> files = list_directory(dirPath);
 
   dirPath.push_back('/');
-  std::vector<std::string> stlFiles;
+  std::vector<std::string> meshFiles;
   for (std::string s : files) {
-    if (isStlFile(s)) {
-      stlFiles.push_back(dirPath + s);
+    if (isMeshFile(s)) {
+      meshFiles.push_back(dirPath + s);
     }
   }
 
   size_t numThreads = std::thread::hardware_concurrency();
-  size_t batch = stlFiles.size() / numThreads + 1;
+  size_t batch = meshFiles.size() / numThreads + 1;
   std::vector<std::thread> workers;
   for (size_t i = 0; i < numThreads; ++i) {
     size_t start = i * batch;
-    size_t end = std::min(start + batch, stlFiles.size());
+    size_t end = std::min(start + batch, meshFiles.size());
     workers.push_back(
-        std::thread(computeSelfIntersection, std::ref(stlFiles), start, end));
+        std::thread(computeSelfIntersection, std::ref(meshFiles), start, end));
   }
 
   for (size_t i = 0; i < numThreads; ++i) {
