@@ -14,7 +14,7 @@ It contains the utility code to compute the proposed new metrics **Segment Error
 ## Build
 
 ```
-sh build.sh
+bash build.sh
 ```
 
 ## Before you compute
