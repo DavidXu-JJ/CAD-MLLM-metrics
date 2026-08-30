@@ -7,6 +7,15 @@ from multiprocessing import Pool
 
 NUM_THREADS = 12
 
+
+def metric_suffixes_for_meshes(mesh_dir):
+    suffixes = set()
+    for filename in os.listdir(mesh_dir):
+        stem, extension = os.path.splitext(filename)
+        if extension.lower() in ('.ply', '.stl'):
+            suffixes.add(f'{stem}.txt')
+    return sorted(suffixes)
+
 def collect_segment_num_error(paths):
     seg_path, gt_seg_path = paths
     if seg_path.split('/')[-1].split('.')[0] != gt_seg_path.split('/')[-1].split('.')[0]:
@@ -60,17 +69,34 @@ if __name__ == "__main__":
     parser.add_argument(
         "path", type=str, help="The path to the evaluation folder."
     )
+    parser.add_argument(
+        "--recon-name",
+        default="recon",
+        help=(
+            "Prediction mesh directory name used as the metric-output prefix "
+            "(default: recon). Use 'inference' for transform_output.py output."
+        ),
+    )
 
     args = parser.parse_args()
-    segment_num_path = os.path.join(args.path, 'recon_segment_num')
-    dangling_edge_path = os.path.join(args.path, 'recon_dangling_edge')
-    self_intersection_path = os.path.join(args.path, 'recon_self_intersection')
-    flux_enclosure_error_path = os.path.join(args.path, 'recon_flux_enclosure_error')
+    recon_prefix = args.recon_name
+    segment_num_path = os.path.join(args.path, f'{recon_prefix}_segment_num')
+    dangling_edge_path = os.path.join(args.path, f'{recon_prefix}_dangling_edge')
+    self_intersection_path = os.path.join(args.path, f'{recon_prefix}_self_intersection')
+    flux_enclosure_error_path = os.path.join(
+        args.path, f'{recon_prefix}_flux_enclosure_error'
+    )
 
     gt_segment_num_path = os.path.join(args.path, 'gt_segment_num')
+    prediction_mesh_path = os.path.join(args.path, recon_prefix)
+    expected_suffixes = metric_suffixes_for_meshes(prediction_mesh_path)
 
     # collect segment num error
-    segment_num_suffix = os.listdir(segment_num_path)
+    segment_num_suffix = [
+        suffix
+        for suffix in expected_suffixes
+        if os.path.isfile(os.path.join(segment_num_path, suffix))
+    ]
     segment_num_paths = []
     gt_segment_num_paths = []
     for suffix in segment_num_suffix:
@@ -87,7 +113,11 @@ if __name__ == "__main__":
     print(len(seg_num_error_list))
 
     # collect dangling edge length
-    dangling_edge_suffix = os.listdir(dangling_edge_path)
+    dangling_edge_suffix = [
+        suffix
+        for suffix in expected_suffixes
+        if os.path.isfile(os.path.join(dangling_edge_path, suffix))
+    ]
     dangling_edge_paths = []
     for suffix in dangling_edge_suffix:
         dangling_edge_paths.append(os.path.join(dangling_edge_path, suffix))
@@ -100,7 +130,11 @@ if __name__ == "__main__":
     print(len(dangling_edge_length_list))
 
     # collect self intersection percentage
-    self_intersection_suffix = os.listdir(self_intersection_path)
+    self_intersection_suffix = [
+        suffix
+        for suffix in expected_suffixes
+        if os.path.isfile(os.path.join(self_intersection_path, suffix))
+    ]
     self_intersection_paths = []
     for suffix in self_intersection_suffix:
         self_intersection_paths.append(os.path.join(self_intersection_path, suffix))
@@ -114,7 +148,11 @@ if __name__ == "__main__":
 
 
     # collect flux enclosure error
-    flux_suffix = os.listdir(flux_enclosure_error_path)
+    flux_suffix = [
+        suffix
+        for suffix in expected_suffixes
+        if os.path.isfile(os.path.join(flux_enclosure_error_path, suffix))
+    ]
     flux_enclosure_error_paths = []
     for suffix in flux_suffix:
         flux_enclosure_error_paths.append(os.path.join(flux_enclosure_error_path, suffix))
