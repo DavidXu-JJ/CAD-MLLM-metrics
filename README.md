@@ -25,7 +25,8 @@ sh build.sh
 
 ## Compute the metrics for each model
 
-Place all your `.ply` files into one folder, like:
+Place all your `.ply` or `.stl` files into one folder. PLY files are read
+directly and do not need to be converted to STL first. For example:
 
 ```
 └── folder
@@ -64,7 +65,7 @@ There would be a `result.json` generated under `toy_case`.
 
 ## Acknowledgements
 
-We appreciate the following projects for their awesome foundation code used in this repo: [CGAL](https://github.com/CGAL/cgal), [polyscope](https://github.com/nmwsharp/polyscope).
+We appreciate [CGAL](https://github.com/CGAL/cgal) for the geometry algorithms used in this repo.
 
 ## Bibtex
 

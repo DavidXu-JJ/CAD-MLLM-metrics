@@ -1,7 +1,10 @@
 cmake_minimum_required(VERSION 3.10.0)
 
-# Template taken from https://github.com/nmwsharp/gc-polyscope-project-template
 project(cad_mllm_metrics)
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
 # Configure output locations
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
@@ -24,7 +27,7 @@ if("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang" OR "${CMAKE_CXX_COMPILER_ID}"
 
   # using Clang (linux or apple) or GCC
   message("Using clang/gcc compiler flags")
-  set(BASE_CXX_FLAGS "-std=c++14 -Wall -Wextra")
+  set(BASE_CXX_FLAGS "-Wall -Wextra")
   set(DISABLED_WARNINGS
       " -Wno-unused-parameter -Wno-unused-variable -Wno-unused-function -Wno-deprecated-declarations -Wno-missing-braces -Wno-unused-private-field"
   )
@@ -78,9 +81,10 @@ else()
 endif()
 
 # == Deps
-add_subdirectory(deps/polyscope)
-add_subdirectory(deps/cgal)
-find_package(CGAL REQUIRED)
+# CGAL is provided by the deps/CGAL submodule. build.sh passes its source
+# directory through CGAL_DIR, so configuring it a second time with
+# add_subdirectory() is unnecessary.
+find_package(CGAL CONFIG REQUIRED)
 
 # == Build our project stuff
 
@@ -98,15 +102,6 @@ target_include_directories(flux_enclosure_error
                            PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include/")
 target_include_directories(self_intersection
                            PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include/")
-# add the args.hxx project which we use for command line args
-target_include_directories(
-  mesh_segment PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/deps/polyscope/deps/args")
-target_include_directories(
-  dangling_edge PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/deps/polyscope/deps/args")
-target_include_directories(
-  flux_enclosure_error PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/deps/polyscope/deps/args")
-target_include_directories(
-  self_intersection PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/deps/polyscope/deps/args")
 target_link_libraries(mesh_segment CGAL::CGAL)
 target_link_libraries(dangling_edge CGAL::CGAL)
 target_link_libraries(flux_enclosure_error CGAL::CGAL)

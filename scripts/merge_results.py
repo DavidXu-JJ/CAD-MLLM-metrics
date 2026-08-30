@@ -1,7 +1,6 @@
 import os
 import json
 import argparse
-import trimesh
 import numpy as np
 from tqdm import tqdm
 from multiprocessing import Pool
@@ -23,21 +22,6 @@ def collect_segment_num_error(paths):
         gt_seg = file.readline()
 
     return abs(int(seg) - int(gt_seg))
-
-def normalize_mesh(mesh):
-    points = mesh.vertices
-
-    min_point = np.min(points, axis=0)
-    max_point = np.max(points, axis=0)
-
-    mean = (min_point + max_point) / 2.0
-    points = points - mean
-
-    scale = np.max(max_point - min_point) / 2.0
-    points = points / scale
-
-    mesh.vertices = points
-    return mesh
 
 def collect_danling_edge_length(paths):
     dangling_edge_path = paths
@@ -71,7 +55,7 @@ def collect_flux_enclosure_error(path):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="Convert all .ply files in a folder to .stl format."
+        description="Merge metric outputs for an evaluation folder."
     )
     parser.add_argument(
         "path", type=str, help="The path to the evaluation folder."
